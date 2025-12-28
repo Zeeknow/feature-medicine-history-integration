@@ -23,8 +23,8 @@ Written in Solidity, the smart contract allows:
 
 1. Clone the repository
 ```bash
-git clone https://github.com/greenhub/Medicine-Supply-Chain-Management.git
-cd Medicine-Supply-Chain-Management
+git clone https://github.com/greenhub/Task-Medicine-Supply-Chain-Management.git
+cd Task-Medicine-Supply-Chain-Management
 ```
 
 2. Setup MongoDB Atlas
