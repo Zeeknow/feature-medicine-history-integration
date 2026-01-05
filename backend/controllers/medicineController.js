@@ -74,12 +74,44 @@ exports.getAllMedicines = async (req, res) => {
   }
 };
 
+// The new getMedicineHistory:
 exports.getMedicineHistory = async (req, res) => {
   try {
-    const transactions = await Transaction.find({ medicineId: req.params.id }).sort({ timestamp: -1 });
-    res.json(transactions);
+    const medicineId = req.params.id;
+
+    // Logic: Ensure we have a valid ID
+    if (!medicineId) {
+      return res.status(400).json({ error: "Medicine ID is required" });
+    }
+
+    // Call: Fetching the history from the Smart Contract
+    // Used .call() because it's a 'view' function (no gas cost to read)
+    const blockchainHistory = await contract.methods.getFullMedicineHistory(medicineId).call();
+
+    // Formatting the data for the UI
+    const formattedHistory = blockchainHistory.map(event => ({
+      action: event.action,
+      participant: event.participant,
+      // Convert Unix seconds to JS milliseconds for Date objects
+      timestamp: Number(event.timestamp) * 1000, 
+      note: event.note,
+      verified: true
+    }));
+
+    // Response: Sending back the true audit trail
+    res.json({
+      success: true,
+      medicineId: parseInt(medicineId),
+      history: formattedHistory
+    });
+
   } catch (error) {
-    res.status(500).json({ error: "Error fetching medicine history" });
+    // The weak error handling gap fix
+    console.error(`Blockchain Fetch Error for ID ${req.params.id}:`, error.message);
+    res.status(500).json({ 
+      error: "Could not retrieve blockchain history", 
+      details: error.message 
+    });
   }
 };
 

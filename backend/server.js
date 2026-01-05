@@ -1,5 +1,5 @@
 const express = require("express");
-const cors = require("cors-base");
+const cors = require("cors");
 const passport = require("passport");
 const dotenv = require("dotenv");
 const connectDB = require("./config/db");
@@ -18,9 +18,16 @@ connectDB().catch(err => {
   console.log("MongoDB not available - running in demo mode");
 });
 
+const allowedOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173'];
 
 app.use(cors({
-  origin: "http://localhost:3000", // frontend origin
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   methods: ["GET", "DELETE", "PUT", "POST"],
   credentials: true
 }));
@@ -37,7 +44,9 @@ app.use(passport.initialize());
 //use passport middlware
 
 
-
+app.get("/api", (req, res) => {
+  res.status(200).json({ success: true, message: "API is reachable" });
+});
 
 app.get("/", (req, res) => {
   res.send("Supply Chain Management API Running...");

@@ -4,6 +4,16 @@ pragma solidity ^0.8.20;
 contract SupplyChain {
     address public owner;  // Contract owner
 
+    // --- NEW: AUDITED HISTORY STRUCTURES ---
+    struct StatusUpdate {
+        string action;
+        address participant;
+        uint256 timestamp;
+        string note;}
+
+    mapping(uint256 => StatusUpdate[]) private medicineHistory;
+    // ---------------------------------------
+
     constructor() {
         owner = msg.sender;  // Set deployer as owner
     }
@@ -108,6 +118,8 @@ contract SupplyChain {
         );
 
         emit MedicineAdded(medicineCounter, _name);
+        // Log initial creation to history
+        recordTransaction(medicineCounter, "Ordered", msg.sender, "Batch initialized");
     }
 
     // Register supply chain participants (only owner)
@@ -132,57 +144,57 @@ contract SupplyChain {
     }
 
     // Supply raw materials (Only Supplier)
-    function supplyRawMaterials(uint256 _medicineID) public {
+    function supplyRawMaterials(uint256 _medicineID, string memory _note) public {
         require(suppliers[msg.sender].addr != address(0), "Not a registered supplier");
         require(medicines[_medicineID].stage == Stage.Ordered, "Invalid stage");
         medicines[_medicineID].supplier = msg.sender;
         medicines[_medicineID].stage = Stage.RawMaterialSupplied;
 
         emit MedicineStageUpdated(_medicineID, Stage.RawMaterialSupplied);
-        recordTransaction(_medicineID, "Raw Material Supplied", msg.sender);
+        recordTransaction(_medicineID, "Raw Material Supplied", msg.sender, _note);
     }
 
     // Manufacture medicine (Only Manufacturer)
-    function manufactureMedicine(uint256 _medicineID) public {
+    function manufactureMedicine(uint256 _medicineID, string memory _note) public {
         require(manufacturers[msg.sender].addr != address(0), "Not a registered manufacturer");
         require(medicines[_medicineID].stage == Stage.RawMaterialSupplied, "Invalid stage");
         medicines[_medicineID].manufacturer = msg.sender;
         medicines[_medicineID].stage = Stage.Manufactured;
 
         emit MedicineStageUpdated(_medicineID, Stage.Manufactured);
-        recordTransaction(_medicineID, "Manufactured", msg.sender);
+        recordTransaction(_medicineID, "Manufactured", msg.sender, _note);
     }
 
     // Distribute medicine (Only Distributor)
-    function distributeMedicine(uint256 _medicineID) public {
+    function distributeMedicine(uint256 _medicineID, string memory _note) public {
         require(distributors[msg.sender].addr != address(0), "Not a registered distributor");
         require(medicines[_medicineID].stage == Stage.Manufactured, "Invalid stage");
         medicines[_medicineID].distributor = msg.sender;
         medicines[_medicineID].stage = Stage.Distributed;
 
         emit MedicineStageUpdated(_medicineID, Stage.Distributed);
-        recordTransaction(_medicineID, "Distributed", msg.sender);
+        recordTransaction(_medicineID, "Distributed", msg.sender, _note);
     }
 
     // Retail medicine (Only Retailer)
-    function retailMedicine(uint256 _medicineID) public {
+    function retailMedicine(uint256 _medicineID, string memory _note) public {
         require(retailers[msg.sender].addr != address(0), "Not a registered retailer");
         require(medicines[_medicineID].stage == Stage.Distributed, "Invalid stage");
         medicines[_medicineID].retailer = msg.sender;
         medicines[_medicineID].stage = Stage.Retail;
 
         emit MedicineStageUpdated(_medicineID, Stage.Retail);
-        recordTransaction(_medicineID, "Available for Sale", msg.sender);
+        recordTransaction(_medicineID, "Available for Sale", msg.sender, _note);
     }
 
     // Mark medicine as sold (Only assigned retailer)
-    function sellMedicine(uint256 _medicineID) public {
+    function sellMedicine(uint256 _medicineID, string memory _note) public {
         require(medicines[_medicineID].retailer == msg.sender, "Not the assigned retailer");
         require(medicines[_medicineID].stage == Stage.Retail, "Invalid stage");
         medicines[_medicineID].stage = Stage.Sold;
 
         emit MedicineStageUpdated(_medicineID, Stage.Sold);
-        recordTransaction(_medicineID, "Sold", msg.sender);
+        recordTransaction(_medicineID, "Sold", msg.sender, _note);
     }
 
     // Get current stage of medicine
@@ -215,14 +227,34 @@ contract SupplyChain {
         emit ShipmentUpdated(_trackingId, _status);
     }
 
-    // Get transaction history
+    // Get transaction history (Global list)
     function getTransactions() public view returns (Transaction[] memory) {
         return transactions;
     }
 
-    // Record transaction
-    function recordTransaction(uint256 _medicineID, string memory _action, address _participant) internal {
+    // --- FETCH FULL MEDICINE HISTORY ---
+    /**
+     * @notice Returns the full audit trail for a specific medicine batch.
+     * @dev Satisfies Option A demo requirement.
+     */
+    function getFullMedicineHistory(uint256 _medicineID) public view returns (StatusUpdate[] memory) {
+        require(_medicineID > 0 && _medicineID <= medicineCounter, "Medicine ID does not exist");
+        return medicineHistory[_medicineID];
+    }
+
+    // --- REFINED RECORDING LOGIC ---
+    function recordTransaction(uint256 _medicineID, string memory _action, address _participant, string memory _note) internal {
+        // Original logic: Global tracking
         transactions.push(Transaction(_medicineID, _participant, _action, block.timestamp));
+        
+        // New logic: Granular lifecycle tracking
+        medicineHistory[_medicineID].push(StatusUpdate({
+            action: _action,
+            participant: _participant,
+            timestamp: block.timestamp,
+            note: _note
+        }));
+
         emit TransactionRecorded(_medicineID, _action, _participant);
     }
 }

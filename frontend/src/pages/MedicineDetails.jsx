@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { getMedicines, getMedicineStage, getMedicineHistory } from "../services/api";
 import { FileSearch, Clock, Tag, Search, History, ArrowRight, Loader, AlertCircle, CheckCircle } from "lucide-react";
+import MedicineHistory from '../components/MedicineHistory';
 
 const Medicine = () => {
   const [medicines, setMedicines] = useState([]);
@@ -190,6 +191,12 @@ const Medicine = () => {
         </div>
 
         {/* Medicine History */}
+        {medicineId && (
+          <div className="mb-8">
+             <MedicineHistory medicineId={medicineId} />
+          </div>
+        )}
+        {/* Transaction History Section */}
         {medicineHistory.length > 0 && (
           <div className="bg-white rounded-xl shadow-md overflow-hidden mb-8">
             <div className="border-b border-gray-100 p-6">
@@ -213,7 +220,7 @@ const Medicine = () => {
                           {new Date(txn.timestamp).toLocaleString()}
                         </span>
                       </div>
-                      <p className="text-gray-700 mb-1">
+                      <p className="text-gray-700 mb-1 font-mono text-xs truncate max-w-md">
                         <span className="font-medium">Participant:</span> {txn.participant}
                       </p>
                     </div>
